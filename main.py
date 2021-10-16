@@ -1,6 +1,21 @@
-import streamlit as st
 from PIL import Image
+import streamlit as st
+from streamlit.report_thread import add_report_ctx
+
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
+import funcs
 import load_and_stylize as las
+
+
+def threading_images(func, values):
+    results = []
+    with ThreadPoolExecutor(max_workers=None) as executor:
+        ctx = st.report_thread.add_report_ctx()
+        futures = [executor.submit(func, args, ctx) for args in values]
+        for future in as_completed(futures):
+            results.append(future.result())
+    return results
 
 st.set_page_config(layout="wide")
 
@@ -9,58 +24,36 @@ mosaic = las.load_model("saved_models/mosaic.pth")
 rain = las.load_model("saved_models/rain_princess.pth")
 udnie = las.load_model("saved_models/udnie.pth")
 
-st.title('Style Transfer Dashboard')
-
-st.write('Upload an image in the siderbar to the left that you would like stylized and download your favorite style! (or all of them ;) hehehe)')
-
-st.write('Warning: Big images will take more time to be stylized!')
-
-st.write('Currently, we have four styles to choose from:')
-
-c1, c2, c3, c4 = st.beta_columns(4)
-
-with c1:
-    st.header("Candy")
-    im1 = Image.open("style_images/candy.jpg")
-    st.image(im1, use_column_width=True)
-with c2:
-    st.header("Mosaic")
-    im2 = Image.open("style_images/mosaic.jpg")
-    st.image(im2, use_column_width=True)
-with c3:
-    st.header("Rain Princess")
-    im3 = Image.open("style_images/rain_princess.jpg")
-    st.image(im3, use_column_width=True)
-with c4:
-    st.header("Udnie")
-    im4 = Image.open("style_images/udnie.jpg")
-    st.image(im4, use_column_width=True)
+funcs.setup()
+funcs.make_header_columns()
 
 uploaded_file = st.sidebar.file_uploader("Choose an image...")
-if uploaded_file is not None:
-    try:
-        image = uploaded_file.read()
-        st.sidebar.image(image, caption='Uploaded Image.', use_column_width=True, width=400)
+if uploaded_file:
+    image = uploaded_file.read()
+    st.sidebar.image(image, caption='Uploaded Image.', use_column_width=False, width=200)
 
-        st.header("Candy")
-        img = las.stylize(candy, image)
-        st.image(img, column_width=200)
+    image_size = st.sidebar.selectbox(
+        label = "Output image size? (The bigger the image the slower the transfer will be)",
+        options = ("Output image size...", "128x128", "256x256", "512x512", "1024x1024"),
+        index = 0
+    )
+    if image_size != "Output image size...":
+        size = int(image_size.split('x')[0])
 
+        arguments_list = [
+            ("Candy", candy, image, size), 
+            ("Mosaic", mosaic, image, size), 
+            ("Rain Princess", rain, image, size), 
+            ("Udnie", udnie, image, size)
+        ]
+        results = threading_images(funcs.stylize_image, arguments_list)
 
-        st.header("Mosaic")
-        img = las.stylize(mosaic, image)
-        st.image(img, column_width=200)
+        try:
+            # print(results)
+            for name, img in results:
+                st.header(name)
+                st.image(img, column_width=100)
 
-
-        st.header("Rain Princess")
-        img = las.stylize(rain, image)
-        st.image(img, column_width=200)
-
-
-        st.header("Udnie")
-        img = las.stylize(udnie, image)
-        st.image(img, column_width=200)
-
-    except:
-        st.write("Invalid Image!")
-
+        except Exception as e:
+            st.write("Invalid Image!")
+            st.write(e)

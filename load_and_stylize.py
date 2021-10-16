@@ -1,30 +1,20 @@
-import argparse
-import os
-import sys
-import time
 import re
 import io
 
-import numpy as np
-import torch
-from torch.optim import Adam
-from torch.utils.data import DataLoader
-from torchvision import datasets
-from torchvision import transforms
-import torch.onnx
-
-import utils
-from transformer_net import TransformerNet
-from vgg import Vgg16
-import streamlit as st
 from PIL import Image
+import streamlit as st
+
+import torch
+from torchvision import transforms
+
+from transformer_net import TransformerNet
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 @st.cache
 def load_model(model_path):
-    print('load model')
+    print(f'Loading model {model_path}')
     with torch.no_grad():
         style_model = TransformerNet()
         state_dict = torch.load(model_path)
@@ -37,22 +27,22 @@ def load_model(model_path):
         style_model.eval()
         return style_model
 
+
 @st.cache
-def stylize(style_model, content_image):
+def stylize(style_model, content_image, size):
     content_image = io.BytesIO(content_image)
     content_image = Image.open(content_image)
     content_transform = transforms.Compose([
+        transforms.Resize(size),
         transforms.ToTensor(),
         transforms.Lambda(lambda x: x.mul(255))
     ])
     content_image = content_transform(content_image)
     content_image = content_image.unsqueeze(0).to(device)
-    
     with torch.no_grad():
         output = style_model(content_image).cpu()
             
     img = output[0].clone().clamp(0, 255).numpy()
     img = img.transpose(1, 2, 0).astype("uint8")
     img = Image.fromarray(img)
-
     return img
