@@ -11,7 +11,9 @@ from torchvision import transforms
 from transformer_net import TransformerNet
 
 
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 @st.cache
 def load_model(model_path):
