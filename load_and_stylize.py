@@ -8,7 +8,7 @@ import streamlit as st
 import torch
 from torchvision import transforms
 
-from transformer_net import TransformerNet
+from network import TransformerNet
 
 
 

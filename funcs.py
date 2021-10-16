@@ -21,8 +21,6 @@ def threading_images(image, size, models):
     with ThreadPoolExecutor(max_workers=None) as executor:
         ctx = get_report_ctx()
         futures = [executor.submit(stylize_image, args, ctx) for args in args_list]
-        for thread in executor._threads:
-            add_report_ctx(thread, ctx)
         for future in as_completed(futures):
             results.append(future.result())
     return results
