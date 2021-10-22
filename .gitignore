@@ -2,4 +2,3 @@ venv
 .vscode
 script.py
 __pycache__
-test.py
